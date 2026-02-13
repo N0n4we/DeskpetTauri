@@ -4,6 +4,7 @@ import { usePetLogic } from "./script";
 const {
   userInput,
   petMessage,
+  petAvatar,
   menuVisible,
   menuX,
   menuY,
@@ -20,7 +21,8 @@ const {
 <template>
   <main class="container" @click="closeMenu">
     <div v-if="petMessage" class="pet-bubble">{{ petMessage }}</div>
-    <div class="pet-ball" @click="onPetClick" @contextmenu="onContextMenu"></div>
+    <img v-if="petAvatar" class="pet-avatar" :src="petAvatar" @click="onPetClick" @contextmenu="onContextMenu" />
+    <div v-else class="pet-ball" @click="onPetClick" @contextmenu="onContextMenu"></div>
 
     <form class="row" @submit.prevent="onPetChat">
       <input id="user-input" v-model="userInput" placeholder="Speak to pet..." />
@@ -37,6 +39,13 @@ const {
 <style>
 * {
   font-family: 'Cascadia Code';
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background: transparent !important;
+  overflow: hidden;
 }
 
 :root {
@@ -156,6 +165,14 @@ button {
   border-radius: 50%;
   color: #999999;
   border: 8px solid currentColor;
+  cursor: pointer;
+  margin: 1em auto 2em;
+}
+
+.pet-avatar {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
   cursor: pointer;
   margin: 1em auto 2em;
 }

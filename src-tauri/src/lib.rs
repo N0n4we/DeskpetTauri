@@ -85,12 +85,72 @@ async fn read_image_base64(path: String) -> Result<String, String> {
     Ok(format!("data:{};base64,{}", mime, b64))
 }
 
+#[tauri::command]
+async fn generate_pet_image(
+    api_url: String,
+    api_key: String,
+    image_base64: String,
+) -> Result<String, String> {
+    let url = format!("{}/v1/chat/completions", api_url.trim_end_matches('/'));
+
+    let body = serde_json::json!({
+        "model": "sourceful/riverflow-v2-pro",
+        "messages": [{
+            "role": "user",
+            "content": [
+                { "type": "text", "text": "请将输入图片转换为一张卡通小人图像" },
+                { "type": "image_url", "image_url": { "url": image_base64 } }
+            ]
+        }]
+    });
+
+    let resp = reqwest::Client::new()
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", api_key))
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        return Err(format!("API error {}: {}", status, text));
+    }
+
+    let data: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    let msg = &data["choices"][0]["message"];
+
+    // Format 1: message.images[].image_url.url
+    if let Some(url) = msg["images"][0]["image_url"]["url"].as_str() {
+        return Ok(url.to_string());
+    }
+    // Format 2: content is a data URL directly
+    if let Some(c) = msg["content"].as_str() {
+        if c.starts_with("data:image") {
+            return Ok(c.to_string());
+        }
+    }
+    // Format 3: content is array with image_url parts
+    if let Some(arr) = msg["content"].as_array() {
+        for part in arr {
+            if part["type"].as_str() == Some("image_url") {
+                if let Some(url) = part["image_url"]["url"].as_str() {
+                    return Ok(url.to_string());
+                }
+            }
+        }
+    }
+
+    Err(format!("No image in response: {}", data))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![chat_completion, read_image_base64])
+        .invoke_handler(tauri::generate_handler![chat_completion, read_image_base64, generate_pet_image])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
