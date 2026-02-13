@@ -8,6 +8,12 @@ const {
   menuVisible,
   menuX,
   menuY,
+  isLoggedIn,
+  authVisible,
+  authMode,
+  authUsername,
+  authPassword,
+  authError,
   onPetClick,
   onPetChat,
   onContextMenu,
@@ -15,7 +21,16 @@ const {
   clearHistory,
   quitApp,
   uploadImage,
+  login,
+  register,
+  logout,
+  showAuth,
 } = usePetLogic();
+
+function submitAuth() {
+  if (authMode.value === "login") login();
+  else register();
+}
 </script>
 
 <template>
@@ -31,7 +46,23 @@ const {
     <div v-if="menuVisible" class="context-menu" :style="{ left: menuX + 'px', top: menuY + 'px' }">
       <div class="menu-item" @click="clearHistory">清除记忆</div>
       <div class="menu-item" @click="uploadImage">上传图片</div>
+      <div v-if="isLoggedIn" class="menu-item" @click="logout">退出登录</div>
+      <div v-else class="menu-item" @click="showAuth">登录</div>
       <div class="menu-item quit" @click="quitApp">退出</div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div v-if="authVisible" class="auth-overlay" @click.self="authVisible = false">
+      <form class="auth-card" @submit.prevent="submitAuth">
+        <div class="auth-title">{{ authMode === 'login' ? '登录' : '注册' }}</div>
+        <input v-model="authUsername" placeholder="用户名" autocomplete="username" />
+        <input v-model="authPassword" type="password" placeholder="密码" autocomplete="current-password" />
+        <div v-if="authError" class="auth-error">{{ authError }}</div>
+        <button type="submit">{{ authMode === 'login' ? '登录' : '注册' }}</button>
+        <div class="auth-switch" @click="authMode = authMode === 'login' ? 'register' : 'login'">
+          {{ authMode === 'login' ? '没有账号？去注册' : '已有账号？去登录' }}
+        </div>
+      </form>
     </div>
   </main>
 </template>
@@ -230,6 +261,82 @@ button {
   }
   .menu-item:hover {
     background: #2a2a2a;
+  }
+}
+
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.auth-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 24px;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.auth-title {
+  font-size: 1.1em;
+  font-weight: 600;
+  text-align: center;
+  color: #333;
+}
+
+.auth-card input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.auth-card button {
+  background: #396cd8;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+.auth-card button:hover {
+  background: #2a5cbf;
+}
+
+.auth-error {
+  color: #e55;
+  font-size: 0.8em;
+  text-align: center;
+}
+
+.auth-switch {
+  font-size: 0.8em;
+  color: #666;
+  text-align: center;
+  cursor: pointer;
+}
+
+.auth-switch:hover {
+  color: #396cd8;
+}
+
+@media (prefers-color-scheme: dark) {
+  .auth-card {
+    background: #1a1a1a;
+  }
+  .auth-title {
+    color: #eee;
+  }
+  .auth-switch {
+    color: #999;
+  }
+  .auth-switch:hover {
+    color: #6b9aff;
   }
 }
 </style>

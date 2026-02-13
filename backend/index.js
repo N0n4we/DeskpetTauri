@@ -1,16 +1,20 @@
 import express from "express";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
+import "./db.js";
+import authRouter, { authMiddleware } from "./auth.js";
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
+app.use(rateLimit({ windowMs: 60_000, max: 30 }));
+app.use(authRouter);
 
 const OPENROUTER_API = "https://openrouter.ai/api/v1/chat/completions";
 const API_KEY =
   "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";
 
-// POST /api/chat — 聊天补全
-app.post("/api/chat", async (req, res) => {
+app.post("/api/chat", authMiddleware, async (req, res) => {
   const { messages } = req.body;
   if (!messages) return res.status(400).json({ error: "messages required" });
 
@@ -29,7 +33,7 @@ app.post("/api/chat", async (req, res) => {
 
     if (!resp.ok) {
       const text = await resp.text();
-      return res.status(resp.status).json({ error: text });
+      return res.status(502).json({ error: `AI service error (${resp.status}): ${text}` });
     }
 
     const data = await resp.json();
@@ -40,8 +44,7 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-// POST /api/generate-pet — 图片生成桌宠
-app.post("/api/generate-pet", async (req, res) => {
+app.post("/api/generate-pet", authMiddleware, async (req, res) => {
   const { imageBase64 } = req.body;
   if (!imageBase64)
     return res.status(400).json({ error: "imageBase64 required" });
@@ -69,7 +72,7 @@ app.post("/api/generate-pet", async (req, res) => {
 
     if (!resp.ok) {
       const text = await resp.text();
-      return res.status(resp.status).json({ error: text });
+      return res.status(502).json({ error: `AI service error (${resp.status}): ${text}` });
     }
 
     const data = await resp.json();

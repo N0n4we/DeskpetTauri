@@ -1,4 +1,4 @@
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -10,12 +10,35 @@ type Message = {
   content: string;
 };
 
+class AuthError extends Error {
+  constructor() {
+    super("请先登录");
+    this.name = "AuthError";
+  }
+}
+
+const token = ref(localStorage.getItem("token") || "");
+const isLoggedIn = computed(() => !!token.value);
+
+function authHeaders(): Record<string, string> {
+  const h: Record<string, string> = { "Content-Type": "application/json" };
+  if (token.value) h["Authorization"] = `Bearer ${token.value}`;
+  return h;
+}
+
+function handleUnauth() {
+  token.value = "";
+  localStorage.removeItem("token");
+  throw new AuthError();
+}
+
 async function chat(messages: Message[]): Promise<string> {
   const resp = await fetch(`${BACKEND}/api/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(),
     body: JSON.stringify({ messages }),
   });
+  if (resp.status === 401) handleUnauth();
   if (!resp.ok) throw new Error(`Backend error ${resp.status}`);
   const data = await resp.json();
   return data.reply;
@@ -29,6 +52,62 @@ export function usePetLogic() {
     { role: "system", content: "你是一只桌面宠物，用简短可爱的语气回复。" },
   ]);
 
+  // Auth state
+  const authVisible = ref(false);
+  const authMode = ref<"login" | "register">("login");
+  const authUsername = ref("");
+  const authPassword = ref("");
+  const authError = ref("");
+
+  async function login() {
+    authError.value = "";
+    try {
+      const resp = await fetch(`${BACKEND}/api/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: authUsername.value, password: authPassword.value }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) { authError.value = data.error; return; }
+      token.value = data.token;
+      localStorage.setItem("token", data.token);
+      authVisible.value = false;
+      authUsername.value = "";
+      authPassword.value = "";
+    } catch { authError.value = "网络错误"; }
+  }
+
+  async function register() {
+    authError.value = "";
+    try {
+      const resp = await fetch(`${BACKEND}/api/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: authUsername.value, password: authPassword.value }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) { authError.value = data.error; return; }
+      token.value = data.token;
+      localStorage.setItem("token", data.token);
+      authVisible.value = false;
+      authUsername.value = "";
+      authPassword.value = "";
+    } catch { authError.value = "网络错误"; }
+  }
+
+  function logout() {
+    token.value = "";
+    localStorage.removeItem("token");
+    closeMenu();
+  }
+
+  function showAuth() {
+    authMode.value = "login";
+    authError.value = "";
+    authVisible.value = true;
+    closeMenu();
+  }
+
   async function onPetClick() {
     messages.value.push({ role: "user", content: "（戳了你一下）" });
     petMessage.value = "思考中...";
@@ -37,7 +116,12 @@ export function usePetLogic() {
       messages.value.push({ role: "assistant", content: reply });
       petMessage.value = reply;
     } catch (e) {
-      petMessage.value = "出错了...";
+      if (e instanceof AuthError) {
+        petMessage.value = "请先登录~";
+        authVisible.value = true;
+      } else {
+        petMessage.value = "出错了...";
+      }
       console.error(e);
     }
     setTimeout(() => {
@@ -58,7 +142,12 @@ export function usePetLogic() {
       messages.value.push({ role: "assistant", content: reply });
       petMessage.value = reply;
     } catch (e) {
-      petMessage.value = "出错了...";
+      if (e instanceof AuthError) {
+        petMessage.value = "请先登录~";
+        authVisible.value = true;
+      } else {
+        petMessage.value = "出错了...";
+      }
       console.error(e);
     }
 
@@ -110,16 +199,22 @@ export function usePetLogic() {
 
       const resp = await fetch(`${BACKEND}/api/generate-pet`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify({ imageBase64: base64 }),
       });
+      if (resp.status === 401) handleUnauth();
       if (!resp.ok) throw new Error(`Backend error ${resp.status}`);
       const data = await resp.json();
       petAvatar.value = data.imageUrl;
       petMessage.value = "get~";
     } catch (e) {
       await win.setAlwaysOnTop(true);
-      petMessage.value = "生成失败了...";
+      if (e instanceof AuthError) {
+        petMessage.value = "请先登录~";
+        authVisible.value = true;
+      } else {
+        petMessage.value = "生成失败了...";
+      }
       console.error(e);
     }
     setTimeout(() => { petMessage.value = ""; }, 3000);
@@ -132,6 +227,12 @@ export function usePetLogic() {
     menuVisible,
     menuX,
     menuY,
+    isLoggedIn,
+    authVisible,
+    authMode,
+    authUsername,
+    authPassword,
+    authError,
     onPetClick,
     onPetChat,
     onContextMenu,
@@ -139,5 +240,9 @@ export function usePetLogic() {
     clearHistory,
     quitApp,
     uploadImage,
+    login,
+    register,
+    logout,
+    showAuth,
   };
 }
