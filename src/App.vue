@@ -4,19 +4,33 @@ import { usePetLogic } from "./script";
 const {
   userInput,
   petMessage,
+  menuVisible,
+  menuX,
+  menuY,
   onPetClick,
-  onPetChat
+  onPetChat,
+  onContextMenu,
+  closeMenu,
+  clearHistory,
+  quitApp,
+  uploadImage,
 } = usePetLogic();
 </script>
 
 <template>
-  <main class="container">
+  <main class="container" @click="closeMenu">
     <div v-if="petMessage" class="pet-bubble">{{ petMessage }}</div>
-    <div class="pet-ball" @click="onPetClick"></div>
+    <div class="pet-ball" @click="onPetClick" @contextmenu="onContextMenu"></div>
 
     <form class="row" @submit.prevent="onPetChat">
       <input id="user-input" v-model="userInput" placeholder="Speak to pet..." />
     </form>
+
+    <div v-if="menuVisible" class="context-menu" :style="{ left: menuX + 'px', top: menuY + 'px' }">
+      <div class="menu-item" @click="clearHistory">清除记忆</div>
+      <div class="menu-item" @click="uploadImage">上传图片</div>
+      <div class="menu-item quit" @click="quitApp">退出</div>
+    </div>
   </main>
 </template>
 
@@ -160,6 +174,45 @@ button {
   .pet-bubble {
     background: #f6f6f6;
     color: #0f0f0f;
+  }
+}
+
+.context-menu {
+  position: fixed;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 4px 0;
+  min-width: 120px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 999;
+}
+
+.menu-item {
+  padding: 6px 16px;
+  cursor: pointer;
+  font-size: 0.85em;
+  color: #333;
+}
+
+.menu-item:hover {
+  background: #f0f0f0;
+}
+
+.menu-item.quit {
+  color: #e55;
+}
+
+@media (prefers-color-scheme: dark) {
+  .context-menu {
+    background: #1a1a1a;
+    border-color: #333;
+  }
+  .menu-item {
+    color: #ddd;
+  }
+  .menu-item:hover {
+    background: #2a2a2a;
   }
 }
 </style>

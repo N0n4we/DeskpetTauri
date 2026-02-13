@@ -1,5 +1,7 @@
 import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { open } from "@tauri-apps/plugin-dialog";
 
 type Message = {
   role: "system" | "user" | "assistant";
@@ -61,10 +63,52 @@ export function usePetLogic() {
     }, 5000);
   }
 
+  const menuVisible = ref(false);
+  const menuX = ref(0);
+  const menuY = ref(0);
+
+  function onContextMenu(e: MouseEvent) {
+    e.preventDefault();
+    menuX.value = e.clientX;
+    menuY.value = e.clientY;
+    menuVisible.value = true;
+  }
+
+  function closeMenu() {
+    menuVisible.value = false;
+  }
+
+  function clearHistory() {
+    messages.value = [messages.value[0]];
+    petMessage.value = "记忆已清除~";
+    closeMenu();
+    setTimeout(() => { petMessage.value = ""; }, 2000);
+  }
+
+  function quitApp() {
+    getCurrentWindow().close();
+  }
+
+  async function uploadImage() {
+    closeMenu();
+    const file = await open({
+      filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "gif", "webp"] }],
+    });
+    if (!file) return;
+  }
+
   return {
     userInput,
     petMessage,
+    menuVisible,
+    menuX,
+    menuY,
     onPetClick,
-    onPetChat
+    onPetChat,
+    onContextMenu,
+    closeMenu,
+    clearHistory,
+    quitApp,
+    uploadImage,
   };
 }
