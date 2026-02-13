@@ -3,19 +3,22 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 
+const BACKEND = "http://localhost:3000";
+
 type Message = {
   role: "system" | "user" | "assistant";
   content: string;
 };
 
-async function chat(messages: Message[]) {
-  const reply = await invoke("chat_completion", {
-    apiUrl: "https://openrouter.ai/api",
-    apiKey: "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",
-    model: "stepfun/step-3.5-flash:free",
-    messages: messages,
+async function chat(messages: Message[]): Promise<string> {
+  const resp = await fetch(`${BACKEND}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages }),
   });
-  return reply;
+  if (!resp.ok) throw new Error(`Backend error ${resp.status}`);
+  const data = await resp.json();
+  return data.reply;
 }
 
 export function usePetLogic() {
@@ -104,12 +107,15 @@ export function usePetLogic() {
 
       petMessage.value = "正在生成桌宠...";
       const base64: string = await invoke("read_image_base64", { path: file });
-      const imageUrl: string = await invoke("generate_pet_image", {
-        apiUrl: "https://openrouter.ai/api",
-        apiKey: "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",
-        imageBase64: base64,
+
+      const resp = await fetch(`${BACKEND}/api/generate-pet`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: base64 }),
       });
-      petAvatar.value = imageUrl;
+      if (!resp.ok) throw new Error(`Backend error ${resp.status}`);
+      const data = await resp.json();
+      petAvatar.value = data.imageUrl;
       petMessage.value = "get~";
     } catch (e) {
       await win.setAlwaysOnTop(true);
