@@ -19,3 +19,7 @@ node index.js
 ```sh
 nix-shell --run 'pnpm tauri dev'
 ```
+
+## Preview
+
+https://github.com/user-attachments/assets/baf1f7ec-efa9-4e89-897d-93cfc14c1ac7

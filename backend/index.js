@@ -57,7 +57,7 @@ app.post("/api/generate-pet", authMiddleware, async (req, res) => {
         Authorization: `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        model: "sourceful/riverflow-v2-pro",
+        model: "sourceful/riverflow-v2-fast",
         messages: [
           {
             role: "user",
