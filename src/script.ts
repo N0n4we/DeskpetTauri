@@ -4,6 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 
 const BACKEND = "http://localhost:3000";
+const TTS_BACKEND = "http://localhost:5001";
 
 type Message = {
   role: "system" | "user" | "assistant";
@@ -42,6 +43,24 @@ async function chat(messages: Message[]): Promise<string> {
   if (!resp.ok) throw new Error(`Backend error ${resp.status}`);
   const data = await resp.json();
   return data.reply;
+}
+
+async function speakText(text: string, character = "mika") {
+  try {
+    const resp = await fetch(`${TTS_BACKEND}/api/tts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, character }),
+    });
+    if (!resp.ok) return;
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => URL.revokeObjectURL(url);
+    audio.play();
+  } catch (e) {
+    console.error("TTS failed:", e);
+  }
 }
 
 export function usePetLogic() {
@@ -115,6 +134,7 @@ export function usePetLogic() {
       const reply = (await chat(messages.value)) as string;
       messages.value.push({ role: "assistant", content: reply });
       petMessage.value = reply;
+      speakText(reply);
     } catch (e) {
       if (e instanceof AuthError) {
         petMessage.value = "请先登录~";
@@ -141,6 +161,7 @@ export function usePetLogic() {
       const reply = (await chat(messages.value)) as string;
       messages.value.push({ role: "assistant", content: reply });
       petMessage.value = reply;
+      speakText(reply);
     } catch (e) {
       if (e instanceof AuthError) {
         petMessage.value = "请先登录~";

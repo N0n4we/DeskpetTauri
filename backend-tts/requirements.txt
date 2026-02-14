@@ -1,0 +1,3 @@
+genie_tts
+flask
+flask-cors
