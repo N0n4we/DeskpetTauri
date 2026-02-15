@@ -4,7 +4,6 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 
 const BACKEND = "http://localhost:3000";
-const TTS_BACKEND = "http://localhost:5001";
 
 type Message = {
   role: "system" | "user" | "assistant";
@@ -47,9 +46,9 @@ async function chat(messages: Message[]): Promise<string> {
 
 async function speakText(text: string, character = "mika") {
   try {
-    const resp = await fetch(`${TTS_BACKEND}/api/tts`, {
+    const resp = await fetch(`${BACKEND}/api/tts`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify({ text, character }),
     });
     if (!resp.ok) return;

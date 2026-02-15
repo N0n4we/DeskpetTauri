@@ -10,6 +10,7 @@ app.use(express.json({ limit: "50mb" }));
 app.use(rateLimit({ windowMs: 60_000, max: 30 }));
 app.use(authRouter);
 
+const TTS_BACKEND = "http://n0n4w3.cn:5001";
 const OPENROUTER_API = "https://openrouter.ai/api/v1/chat/completions";
 const API_KEY =
   "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";
@@ -97,6 +98,30 @@ app.post("/api/generate-pet", authMiddleware, async (req, res) => {
     }
 
     res.status(500).json({ error: "No image in response", raw: data });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/api/tts", authMiddleware, async (req, res) => {
+  const { text, character } = req.body;
+  if (!text) return res.status(400).json({ error: "text required" });
+
+  try {
+    const resp = await fetch(`${TTS_BACKEND}/api/tts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, character }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      return res.status(502).json({ error: `TTS service error (${resp.status}): ${err}` });
+    }
+
+    res.set("Content-Type", "audio/wav");
+    const arrayBuf = await resp.arrayBuffer();
+    res.send(Buffer.from(arrayBuf));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
