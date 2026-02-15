@@ -44,8 +44,6 @@ async function chat(messages: Message[]): Promise<string> {
   return data.reply;
 }
 
-let audioCtx: AudioContext | null = null;
-
 async function speakText(text: string, character = "mika") {
   try {
     const resp = await fetch(`${BACKEND}/api/tts`, {
@@ -55,15 +53,7 @@ async function speakText(text: string, character = "mika") {
     });
     if (!resp.ok) return;
     const arrayBuffer = await resp.arrayBuffer();
-    if (!audioCtx) audioCtx = new AudioContext();
-    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-    const source = audioCtx.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(audioCtx.destination);
-    await new Promise<void>((resolve) => {
-      source.onended = () => resolve();
-      source.start();
-    });
+    await invoke("play_audio_wav", { data: Array.from(new Uint8Array(arrayBuffer)) });
   } catch (e) {
     console.error("TTS failed:", e);
   }

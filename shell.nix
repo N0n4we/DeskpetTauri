@@ -13,6 +13,7 @@ pkgs.mkShell {
     gdk-pixbuf
     atk
     librsvg
+    alsa-lib
   ];
 
   shellHook = ''
