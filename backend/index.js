@@ -108,10 +108,32 @@ app.post("/api/tts", authMiddleware, async (req, res) => {
   if (!text) return res.status(400).json({ error: "text required" });
 
   try {
+    // Translate to Japanese for TTS voice
+    const tlResp = await fetch(OPENROUTER_API, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "stepfun/step-3.5-flash:free",
+        messages: [
+          { role: "system", content: "你是翻译器，将用户输入翻译成日语，只输出翻译结果，不要任何解释。去掉所有括号内的动作描述（如「（摇尾巴）」「（开心地跳起来）」等），只翻译实际对话内容。" },
+          { role: "user", content: text },
+        ],
+      }),
+    });
+
+    let jaText = text;
+    if (tlResp.ok) {
+      const tlData = await tlResp.json();
+      jaText = tlData.choices?.[0]?.message?.content?.trim() || text;
+    }
+
     const resp = await fetch(`${TTS_BACKEND}/api/tts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, character }),
+      body: JSON.stringify({ text: jaText, character }),
     });
 
     if (!resp.ok) {

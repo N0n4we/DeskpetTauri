@@ -44,6 +44,8 @@ async function chat(messages: Message[]): Promise<string> {
   return data.reply;
 }
 
+let audioCtx: AudioContext | null = null;
+
 async function speakText(text: string, character = "mika") {
   try {
     const resp = await fetch(`${BACKEND}/api/tts`, {
@@ -52,11 +54,16 @@ async function speakText(text: string, character = "mika") {
       body: JSON.stringify({ text, character }),
     });
     if (!resp.ok) return;
-    const blob = await resp.blob();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    audio.onended = () => URL.revokeObjectURL(url);
-    audio.play();
+    const arrayBuffer = await resp.arrayBuffer();
+    if (!audioCtx) audioCtx = new AudioContext();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    const source = audioCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioCtx.destination);
+    await new Promise<void>((resolve) => {
+      source.onended = () => resolve();
+      source.start();
+    });
   } catch (e) {
     console.error("TTS failed:", e);
   }
@@ -133,7 +140,7 @@ export function usePetLogic() {
       const reply = (await chat(messages.value)) as string;
       messages.value.push({ role: "assistant", content: reply });
       petMessage.value = reply;
-      speakText(reply);
+      await speakText(reply);
     } catch (e) {
       if (e instanceof AuthError) {
         petMessage.value = "请先登录~";
@@ -145,7 +152,7 @@ export function usePetLogic() {
     }
     setTimeout(() => {
       petMessage.value = "";
-    }, 5000);
+    }, 2000);
   }
 
   async function onPetChat() {
@@ -160,7 +167,7 @@ export function usePetLogic() {
       const reply = (await chat(messages.value)) as string;
       messages.value.push({ role: "assistant", content: reply });
       petMessage.value = reply;
-      speakText(reply);
+      await speakText(reply);
     } catch (e) {
       if (e instanceof AuthError) {
         petMessage.value = "请先登录~";
@@ -173,7 +180,7 @@ export function usePetLogic() {
 
     setTimeout(() => {
       petMessage.value = "";
-    }, 5000);
+    }, 2000);
   }
 
   const menuVisible = ref(false);

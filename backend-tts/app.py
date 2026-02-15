@@ -20,6 +20,7 @@ def tts():
         return jsonify({"error": "text is required"}), 400
 
     text = data["text"]
+    print("text:", text)
     character = data.get("character", DEFAULT_CHARACTER)
 
     try:
