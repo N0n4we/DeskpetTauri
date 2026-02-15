@@ -25,6 +25,8 @@ const {
   register,
   logout,
   showAuth,
+  ttsEnabled,
+  toggleTts,
 } = usePetLogic();
 
 function submitAuth() {
@@ -44,6 +46,7 @@ function submitAuth() {
     </form>
 
     <div v-if="menuVisible" class="context-menu" :style="{ left: menuX + 'px', top: menuY + 'px' }">
+      <div class="menu-item" @click="toggleTts">{{ ttsEnabled ? '关闭语音' : '开启语音' }}</div>
       <div class="menu-item" @click="clearHistory">清除记忆</div>
       <div class="menu-item" @click="uploadImage">上传图片</div>
       <div v-if="isLoggedIn" class="menu-item" @click="logout">退出登录</div>

@@ -67,6 +67,8 @@ export function usePetLogic() {
     { role: "system", content: "你是一只桌面宠物，用简短可爱的语气回复。" },
   ]);
 
+  const ttsEnabled = ref(localStorage.getItem("ttsEnabled") !== "false");
+
   // Auth state
   const authVisible = ref(false);
   const authMode = ref<"login" | "register">("login");
@@ -130,7 +132,7 @@ export function usePetLogic() {
       const reply = (await chat(messages.value)) as string;
       messages.value.push({ role: "assistant", content: reply });
       petMessage.value = reply;
-      await speakText(reply);
+      if (ttsEnabled.value) await speakText(reply);
     } catch (e) {
       if (e instanceof AuthError) {
         petMessage.value = "请先登录~";
@@ -157,7 +159,7 @@ export function usePetLogic() {
       const reply = (await chat(messages.value)) as string;
       messages.value.push({ role: "assistant", content: reply });
       petMessage.value = reply;
-      await speakText(reply);
+      if (ttsEnabled.value) await speakText(reply);
     } catch (e) {
       if (e instanceof AuthError) {
         petMessage.value = "请先登录~";
@@ -237,6 +239,12 @@ export function usePetLogic() {
     setTimeout(() => { petMessage.value = ""; }, 3000);
   }
 
+  function toggleTts() {
+    ttsEnabled.value = !ttsEnabled.value;
+    localStorage.setItem("ttsEnabled", String(ttsEnabled.value));
+    closeMenu();
+  }
+
   return {
     userInput,
     petMessage,
@@ -250,6 +258,7 @@ export function usePetLogic() {
     authUsername,
     authPassword,
     authError,
+    ttsEnabled,
     onPetClick,
     onPetChat,
     onContextMenu,
@@ -261,5 +270,6 @@ export function usePetLogic() {
     register,
     logout,
     showAuth,
+    toggleTts,
   };
 }
